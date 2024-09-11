@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using API.Models;
+using API.Dtos;
 
 namespace API.Controllers
 {
@@ -55,6 +56,42 @@ namespace API.Controllers
             else
             {
                 throw new Exception("Failed to Update User");
+            }
+        }
+
+        /// <summary>
+        /// Adds a new user to the database with the provided details.
+        /// </summary>
+        [HttpPost("AddUser")]
+        public IActionResult AddUser(UserToAddDto user)
+        {
+            string sql = $"INSERT INTO Users (FirstName,LastName,Email,Gender,Active)" +
+                         $"VALUES('{user.FirstName}','{user.LastName}','{user.Email}','{user.Gender}'" +
+                         $",'{user.Active}')";
+            if (_dapper.ExecuteSql(sql))
+            {
+                return Ok();
+            }
+            else
+            {
+                throw new Exception("Failed to Add User");
+            }
+        }
+
+        /// <summary>
+        /// Deletes a user from the database based on the provided user ID.
+        /// </summary>
+        [HttpDelete("DeleteUser/{userId}")]
+        public IActionResult DeleteUser(int userId)
+        {
+            string sql = $"DELETE FROM Users WHERE UserId = {userId}";
+            if (_dapper.ExecuteSql(sql))
+            {
+                return Ok();
+            }
+            else
+            {
+                throw new Exception("Failed to Delete User");
             }
         }
     }
