@@ -38,16 +38,7 @@ namespace API.Controllers
                         rng.GetNonZeroBytes(passwordSalt);
                     }
 
-                    string passwordSaltPlusString = _config.GetSection("AppSettings:PasswordKey").Value
-                                                    + Convert.ToBase64String(passwordSalt);
-
-                    byte[] passwordHash = KeyDerivation.Pbkdf2(
-                        password: userForRegistration.Password,
-                        salt: Encoding.ASCII.GetBytes(passwordSaltPlusString),
-                        prf: KeyDerivationPrf.HMACSHA256,
-                        iterationCount: 1000,
-                        numBytesRequested: 256 / 8
-                    );
+                    byte[] passwordHash = GetPasswordHash(userForRegistration.Password, passwordSalt);
 
                     string sqlAddAuth = $"INSERT INTO Auth(Email,PasswordHash,PasswordSalt) " +
                                         $"VALUES('{userForRegistration.Email}', @PasswordHash, @PasswordSalt)";
@@ -78,9 +69,42 @@ namespace API.Controllers
         }
 
         [HttpPost("Login")]
-        public IActionResult Login(UserForLoginDto userFpLogin)
+        public IActionResult Login(UserForLoginDto userFoLogin)
         {
+            string sqlForHashAndSalt = $"SELECT PasswordSalt,PasswordHash FROM Auth " +
+                                       $"WHERE Email = '{userFoLogin.Email}'";
+
+            UserForLoginConfirmationDto userForConfirmation =
+                _dapper.LoadDataSingle<UserForLoginConfirmationDto>(sqlForHashAndSalt);
+
+            byte[] passwordHash = GetPasswordHash(userFoLogin.Password, userForConfirmation.PasswordSalt);
+
+            //if(passwordHash == userForConfirmation.PasswordHash) Won't work because they are objects
+            for (int index = 0; index < passwordHash.Length; index++)
+            {
+                if (passwordHash[index] != userForConfirmation.PasswordHash[index])
+                {
+                    return StatusCode(401,"Incorrect password!");
+                }
+            }
+
             return Ok();
+        }
+
+        private byte[] GetPasswordHash(string password, byte[] passwordSalt)
+        {
+            string passwordSaltPlusString = _config.GetSection("AppSettings:PasswordKey").Value
+                                            + Convert.ToBase64String(passwordSalt);
+
+            byte[] passwordHash = KeyDerivation.Pbkdf2(
+                password: password,
+                salt: Encoding.ASCII.GetBytes(passwordSaltPlusString),
+                prf: KeyDerivationPrf.HMACSHA256,
+                iterationCount: 1000,
+                numBytesRequested: 256 / 8
+            );
+
+            return passwordHash;
         }
     }
 }
