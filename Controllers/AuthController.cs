@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using API.Data;
 using API.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
@@ -25,6 +27,7 @@ namespace API.Controllers
             _config = config;
         }
 
+        [AllowAnonymous]
         [HttpPost("Register")]
         public IActionResult Register(UserForRegistrationDto userForRegistration)
         {
@@ -81,6 +84,7 @@ namespace API.Controllers
             throw new Exception("Passwords do not match!");
         }
 
+        [AllowAnonymous]
         [HttpPost("Login")]
         public IActionResult Login(UserForLoginDto userFoLogin)
         {
@@ -107,6 +111,21 @@ namespace API.Controllers
             return Ok(new Dictionary<string,string>
             {
                 {"token", CreateToken(userId)}
+            });
+        }
+
+        [HttpGet("RefreshToken")]
+        public IActionResult RefreshToken()
+        {
+            string userId = User.FindFirst("userId")?.Value + "";
+
+            string userIdSql = $"SELECT userId FROM Users WHERE UserId = {userId}";
+
+            int userIdFromDb = _dapper.LoadDataSingle<int>(userIdSql);
+
+            return Ok(new Dictionary<string, string>
+            {
+                {"token", CreateToken(userIdFromDb)}
             });
         }
 
