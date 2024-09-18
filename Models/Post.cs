@@ -1,6 +1,6 @@
 ﻿namespace API.Models
 {
-    public partial class Posts
+    public partial class Post
     {
         public int PostId { get; set; }
         public int UserId { get; set; }
