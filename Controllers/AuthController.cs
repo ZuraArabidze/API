@@ -4,6 +4,7 @@ using API.Data;
 using API.Dtos;
 using API.Helpers;
 using API.Models;
+using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -82,11 +83,18 @@ namespace API.Controllers
         [HttpPost("Login")]
         public IActionResult Login(UserForLoginDto userFoLogin)
         {
-            string sqlForHashAndSalt = $"SELECT PasswordSalt,PasswordHash FROM Auth " +
-                                       $"WHERE Email = '{userFoLogin.Email}'";
+            string sqlForHashAndSalt = $"EXEC dbo.spLoginConfirmation_Get @Email = @EmailParam ";
+
+            DynamicParameters sqlParameters = new DynamicParameters();
+
+            //SqlParameter emailParameter = new SqlParameter("@EmailParam",SqlDbType.VarChar);
+            //emailParameter.Value = userFoLogin.Email;
+            //sqlParameters.Add(emailParameter);
+
+            sqlParameters.Add("@EmailParam",userFoLogin.Email,DbType.String);
 
             UserForLoginConfirmationDto userForConfirmation =
-                _dapper.LoadDataSingle<UserForLoginConfirmationDto>(sqlForHashAndSalt);
+                _dapper.LoadDataSingleWithParameters<UserForLoginConfirmationDto>(sqlForHashAndSalt,sqlParameters);
 
             byte[] passwordHash = _authHelper.GetPasswordHash(userFoLogin.Password, userForConfirmation.PasswordSalt);
 
